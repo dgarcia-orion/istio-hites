@@ -1,0 +1,111 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  annotations:
+    deprecated.daemonset.template.generation: "1"
+  creationTimestamp: "2019-10-01T13:07:21Z"
+  generation: 1
+  labels:
+    app: nodeagent
+    chart: nodeagent
+    heritage: Tiller
+    istio: nodeagent
+    release: istio
+  name: istio-nodeagent
+  namespace: istio-system
+  resourceVersion: "454970889"
+  selfLink: /apis/apps/v1/namespaces/istio-system/daemonsets/istio-nodeagent
+  uid: 679e8bd4-e44c-11e9-838a-4201ac100005
+spec:
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      istio: nodeagent
+  template:
+    metadata:
+      annotations:
+        sidecar.istio.io/inject: "false"
+      creationTimestamp: null
+      labels:
+        app: nodeagent
+        chart: nodeagent
+        heritage: Tiller
+        istio: nodeagent
+        release: istio
+    spec:
+      affinity:
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - preference:
+              matchExpressions:
+              - key: beta.kubernetes.io/arch
+                operator: In
+                values:
+                - amd64
+            weight: 2
+          - preference:
+              matchExpressions:
+              - key: beta.kubernetes.io/arch
+                operator: In
+                values:
+                - ppc64le
+            weight: 2
+          - preference:
+              matchExpressions:
+              - key: beta.kubernetes.io/arch
+                operator: In
+                values:
+                - s390x
+            weight: 2
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: beta.kubernetes.io/arch
+                operator: In
+                values:
+                - amd64
+                - ppc64le
+                - s390x
+      containers:
+      - env:
+        - name: CA_ADDR
+          value: istio-citadel:8060
+        - name: CA_PROVIDER
+          value: Citadel
+        - name: Plugins
+        - name: VALID_TOKEN
+          value: "true"
+        - name: Trust_Domain
+        image: docker.io/istio/node-agent-k8s:1.2.5
+        imagePullPolicy: IfNotPresent
+        name: nodeagent
+        resources: {}
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+        volumeMounts:
+        - mountPath: /var/run/sds
+          name: sdsudspath
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      securityContext: {}
+      serviceAccount: istio-nodeagent-service-account
+      serviceAccountName: istio-nodeagent-service-account
+      terminationGracePeriodSeconds: 30
+      volumes:
+      - hostPath:
+          path: /var/run/sds
+          type: ""
+        name: sdsudspath
+  updateStrategy:
+    rollingUpdate:
+      maxUnavailable: 1
+    type: RollingUpdate
+status:
+  currentNumberScheduled: 8
+  desiredNumberScheduled: 8
+  numberAvailable: 8
+  numberMisscheduled: 0
+  numberReady: 8
+  observedGeneration: 1
+  updatedNumberScheduled: 8

@@ -1,0 +1,230 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    checksum/config-volume: f8da08b6b8c170dde721efd680270b2901e750d4aa186ebb6c22bef5b78a43f9
+    deployment.kubernetes.io/revision: "1"
+  creationTimestamp: "2019-10-01T13:07:22Z"
+  generation: 337
+  labels:
+    app: pilot
+    chart: pilot
+    heritage: Tiller
+    istio: pilot
+    release: istio
+  name: istio-pilot
+  namespace: istio-system
+  resourceVersion: "454976769"
+  selfLink: /apis/apps/v1/namespaces/istio-system/deployments/istio-pilot
+  uid: 67cdd5ed-e44c-11e9-838a-4201ac100005
+spec:
+  progressDeadlineSeconds: 600
+  replicas: 2
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      istio: pilot
+  strategy:
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+    type: RollingUpdate
+  template:
+    metadata:
+      annotations:
+        sidecar.istio.io/inject: "false"
+      creationTimestamp: null
+      labels:
+        app: pilot
+        chart: pilot
+        heritage: Tiller
+        istio: pilot
+        release: istio
+    spec:
+      affinity:
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - preference:
+              matchExpressions:
+              - key: beta.kubernetes.io/arch
+                operator: In
+                values:
+                - amd64
+            weight: 2
+          - preference:
+              matchExpressions:
+              - key: beta.kubernetes.io/arch
+                operator: In
+                values:
+                - ppc64le
+            weight: 2
+          - preference:
+              matchExpressions:
+              - key: beta.kubernetes.io/arch
+                operator: In
+                values:
+                - s390x
+            weight: 2
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: beta.kubernetes.io/arch
+                operator: In
+                values:
+                - amd64
+                - ppc64le
+                - s390x
+      containers:
+      - args:
+        - discovery
+        - --monitoringAddr=:15014
+        - --log_output_level=default:info
+        - --domain
+        - cluster.local
+        - --secureGrpcAddr
+        - ""
+        - --keepaliveMaxServerConnectionAge
+        - 30m
+        env:
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.name
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.namespace
+        - name: GODEBUG
+          value: gctrace=1
+        - name: PILOT_PUSH_THROTTLE
+          value: "100"
+        - name: PILOT_TRACE_SAMPLING
+          value: "1"
+        - name: PILOT_DISABLE_XDS_MARSHALING_TO_ANY
+          value: "1"
+        image: docker.io/istio/pilot:1.2.5
+        imagePullPolicy: IfNotPresent
+        name: discovery
+        ports:
+        - containerPort: 8080
+          protocol: TCP
+        - containerPort: 15010
+          protocol: TCP
+        readinessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /ready
+            port: 8080
+            scheme: HTTP
+          initialDelaySeconds: 5
+          periodSeconds: 30
+          successThreshold: 1
+          timeoutSeconds: 5
+        resources:
+          requests:
+            cpu: 500m
+            memory: 2Gi
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+        volumeMounts:
+        - mountPath: /etc/istio/config
+          name: config-volume
+        - mountPath: /etc/certs
+          name: istio-certs
+          readOnly: true
+      - args:
+        - proxy
+        - --domain
+        - $(POD_NAMESPACE).svc.cluster.local
+        - --serviceCluster
+        - istio-pilot
+        - --templateFile
+        - /etc/istio/proxy/envoy_pilot.yaml.tmpl
+        - --controlPlaneAuthPolicy
+        - NONE
+        env:
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.name
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.namespace
+        - name: INSTANCE_IP
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: status.podIP
+        image: docker.io/istio/proxyv2:1.2.5
+        imagePullPolicy: IfNotPresent
+        name: istio-proxy
+        ports:
+        - containerPort: 15003
+          protocol: TCP
+        - containerPort: 15005
+          protocol: TCP
+        - containerPort: 15007
+          protocol: TCP
+        - containerPort: 15011
+          protocol: TCP
+        resources:
+          limits:
+            cpu: "2"
+            memory: 1Gi
+          requests:
+            cpu: 100m
+            memory: 128Mi
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+        volumeMounts:
+        - mountPath: /etc/certs
+          name: istio-certs
+          readOnly: true
+        - mountPath: /var/run/sds
+          name: sds-uds-path
+          readOnly: true
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      securityContext: {}
+      serviceAccount: istio-pilot-service-account
+      serviceAccountName: istio-pilot-service-account
+      terminationGracePeriodSeconds: 30
+      volumes:
+      - hostPath:
+          path: /var/run/sds
+          type: ""
+        name: sds-uds-path
+      - configMap:
+          defaultMode: 420
+          name: istio
+        name: config-volume
+      - name: istio-certs
+        secret:
+          defaultMode: 420
+          optional: true
+          secretName: istio.istio-pilot-service-account
+status:
+  availableReplicas: 2
+  conditions:
+  - lastTransitionTime: "2019-10-01T13:07:22Z"
+    lastUpdateTime: "2019-10-01T13:08:24Z"
+    message: ReplicaSet "istio-pilot-7f7965b969" has successfully progressed.
+    reason: NewReplicaSetAvailable
+    status: "True"
+    type: Progressing
+  - lastTransitionTime: "2020-12-27T05:41:14Z"
+    lastUpdateTime: "2020-12-27T05:41:14Z"
+    message: Deployment has minimum availability.
+    reason: MinimumReplicasAvailable
+    status: "True"
+    type: Available
+  observedGeneration: 337
+  readyReplicas: 2
+  replicas: 2
+  updatedReplicas: 2
